@@ -1,0 +1,16 @@
+services:
+  php:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        USER_ID: ${USER_ID:-1000}
+        GROUP_ID: ${GROUP_ID:-1000}
+    image: library-api-php
+    container_name: library-api-php
+    working_dir: /app
+    command: ["tail", "-f", "/dev/null"]
+    environment:
+      DATABASE_URL: "sqlite:///%kernel.project_dir%/var/data.db"
+    volumes:
+      - .:/app
