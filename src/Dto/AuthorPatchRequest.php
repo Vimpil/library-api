@@ -1,0 +1,23 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Dto;
+
+use Symfony\Component\Validator\Constraints as Assert;
+
+final class AuthorPatchRequest
+{
+    public function __construct(
+        #[Assert\Length(max: 255)]
+        public readonly ?string $name = null,
+
+        /** @var list<int>|null */
+        #[Assert\All([
+            new Assert\Type('integer'),
+            new Assert\GreaterThan(0),
+        ])]
+        public readonly ?array $bookIds = null,
+    ) {
+    }
+}
