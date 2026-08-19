@@ -9,7 +9,9 @@ services:
     image: library-api-php
     container_name: library-api-php
     working_dir: /app
-    command: ["tail", "-f", "/dev/null"]
+    command: ["php", "-S", "0.0.0.0:8000", "-t", "public/"]
+    ports:
+      - "8000:8000"
     environment:
       DATABASE_URL: "sqlite:///%kernel.project_dir%/var/data.db"
     volumes:

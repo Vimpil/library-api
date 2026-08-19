@@ -19,6 +19,14 @@ docker exec library-api-php composer install
 docker exec library-api-php php bin/console doctrine:migrations:migrate --no-interaction
 ```
 
+API доступен на `http://localhost:8000`.
+
+Тесты:
+
+```bash
+docker exec library-api-php php bin/phpunit
+```
+
 ### Без Docker
 
 ```bash
