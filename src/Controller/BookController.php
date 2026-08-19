@@ -56,22 +56,19 @@ final class BookController extends AbstractController
             return $this->json(['error' => sprintf('Invalid order "%s". Allowed: %s', $query->order, implode(', ', self::ALLOWED_ORDERS))], 400);
         }
 
-        $pageSize = min(max($query->pageSize, 1), 100);
-        $page = max($query->page, 1);
-
         $result = $this->bookRepository->findPaginated(
             title: $query->title,
             sort: $sort,
             order: $order,
-            page: $page,
-            pageSize: $pageSize,
+            page: $query->page,
+            pageSize: $query->pageSize,
         );
 
         $items = array_map(fn (Book $b): BookResponse => $this->toResponse($b), $result['items']);
         $total = $result['total'];
-        $pages = $pageSize > 0 ? (int) ceil($total / $pageSize) : 0;
+        $pages = (int) ceil($total / $query->pageSize);
 
-        return $this->json(new PaginatedResponse($items, new PaginationMeta($page, $pageSize, $total, $pages)));
+        return $this->json(new PaginatedResponse($items, new PaginationMeta($query->page, $query->pageSize, $total, $pages)));
     }
 
     #[Route('', name: 'create', methods: ['POST'])]

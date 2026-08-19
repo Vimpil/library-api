@@ -9,6 +9,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 final class BookPatchRequest
 {
     public function __construct(
+        #[Assert\NotBlank(allowNull: true, normalizer: 'trim')]
         #[Assert\Length(max: 255)]
         public readonly ?string $title = null,
 

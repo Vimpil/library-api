@@ -268,4 +268,204 @@ final class BookApiTest extends ApiTestCase
         $this->jsonRequest('GET', '/api/books?order=random');
         $this->assertSame(400, $this->client->getResponse()->getStatusCode());
     }
+
+    public function testListPageZeroRejected(): void
+    {
+        $this->jsonRequest('GET', '/api/books?page=0');
+        $this->assertSame(400, $this->client->getResponse()->getStatusCode());
+    }
+
+    public function testListPageNegativeRejected(): void
+    {
+        $this->jsonRequest('GET', '/api/books?page=-1');
+        $this->assertSame(400, $this->client->getResponse()->getStatusCode());
+    }
+
+    public function testListPageNonNumericRejected(): void
+    {
+        $this->jsonRequest('GET', '/api/books?page=abc');
+        $this->assertSame(400, $this->client->getResponse()->getStatusCode());
+    }
+
+    public function testListPageSizeZeroRejected(): void
+    {
+        $this->jsonRequest('GET', '/api/books?pageSize=0');
+        $this->assertSame(400, $this->client->getResponse()->getStatusCode());
+    }
+
+    public function testListPageSizeOverMaxRejected(): void
+    {
+        $this->jsonRequest('GET', '/api/books?pageSize=101');
+        $this->assertSame(400, $this->client->getResponse()->getStatusCode());
+    }
+
+    public function testListPageSizeNonNumericRejected(): void
+    {
+        $this->jsonRequest('GET', '/api/books?pageSize=abc');
+        $this->assertSame(400, $this->client->getResponse()->getStatusCode());
+    }
+
+    public function testListPageSizeMaxAccepted(): void
+    {
+        $this->jsonRequest('POST', '/api/books', ['title' => 'Test']);
+        $this->jsonRequest('GET', '/api/books?pageSize=100');
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
+
+        $data = json_decode($this->client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        $this->assertSame(100, $data['pagination']['pageSize']);
+        $this->assertCount(1, $data['items']);
+    }
+
+    public function testListPageOneAccepted(): void
+    {
+        $this->jsonRequest('POST', '/api/books', ['title' => 'Test']);
+        $this->jsonRequest('GET', '/api/books?page=1');
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
+
+        $data = json_decode($this->client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        $this->assertSame(1, $data['pagination']['page']);
+    }
+
+    public function testListPageSizeNegativeRejected(): void
+    {
+        $this->jsonRequest('GET', '/api/books?pageSize=-1');
+        $this->assertSame(400, $this->client->getResponse()->getStatusCode());
+    }
+
+    public function testListPageBeyondLastPage(): void
+    {
+        for ($i = 1; $i <= 3; ++$i) {
+            $this->jsonRequest('POST', '/api/books', ['title' => "Book $i"]);
+        }
+
+        $this->jsonRequest('GET', '/api/books?page=10&pageSize=2');
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
+
+        $data = json_decode($this->client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        $this->assertSame([], $data['items']);
+        $this->assertSame(3, $data['pagination']['total']);
+        $this->assertSame(2, $data['pagination']['pages']);
+        $this->assertSame(10, $data['pagination']['page']);
+        $this->assertSame(2, $data['pagination']['pageSize']);
+    }
+
+    public function testListPageSizeOneAccepted(): void
+    {
+        $this->jsonRequest('POST', '/api/books', ['title' => 'First']);
+        $this->jsonRequest('POST', '/api/books', ['title' => 'Second']);
+
+        $this->jsonRequest('GET', '/api/books?pageSize=1');
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
+
+        $data = json_decode($this->client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        $this->assertCount(1, $data['items']);
+        $this->assertSame(1, $data['pagination']['pageSize']);
+        $this->assertSame(2, $data['pagination']['total']);
+        $this->assertSame(2, $data['pagination']['pages']);
+    }
+
+    public function testListSortDesc(): void
+    {
+        $this->jsonRequest('POST', '/api/books', ['title' => 'Zebra']);
+        $this->jsonRequest('POST', '/api/books', ['title' => 'Apple']);
+
+        $this->jsonRequest('GET', '/api/books?sort=title&order=desc');
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
+
+        $data = json_decode($this->client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        $titles = array_column($data['items'], 'title');
+        $this->assertSame(['Zebra', 'Apple'], $titles);
+    }
+
+    public function testListSortUppercaseAccepted(): void
+    {
+        $this->jsonRequest('POST', '/api/books', ['title' => 'Charlie']);
+        $this->jsonRequest('POST', '/api/books', ['title' => 'Alice']);
+        $this->jsonRequest('POST', '/api/books', ['title' => 'Bob']);
+
+        $this->jsonRequest('GET', '/api/books?sort=TITLE&order=ASC');
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
+
+        $data = json_decode($this->client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        $titles = array_column($data['items'], 'title');
+        $this->assertSame(['Alice', 'Bob', 'Charlie'], $titles);
+    }
+
+    public function testCreateMalformedAuthorIds(): void
+    {
+        $this->jsonRequest('POST', '/api/books', [
+            'title' => 'Malformed',
+            'authorIds' => ['abc'],
+        ]);
+        $this->assertSame(400, $this->client->getResponse()->getStatusCode());
+    }
+
+    public function testCreateZeroAuthorIdRejected(): void
+    {
+        $this->jsonRequest('POST', '/api/books', [
+            'title' => 'Zero ID',
+            'authorIds' => [0],
+        ]);
+        $this->assertSame(400, $this->client->getResponse()->getStatusCode());
+    }
+
+    public function testReadNonNumericId(): void
+    {
+        $this->jsonRequest('GET', '/api/books/abc');
+        $this->assertSame(404, $this->client->getResponse()->getStatusCode());
+    }
+
+    public function testPatchAllFields(): void
+    {
+        $this->jsonRequest('POST', '/api/authors', ['name' => 'Author 1']);
+
+        $this->jsonRequest('POST', '/api/books', [
+            'title' => 'Original',
+            'description' => 'Original Description',
+        ]);
+        $this->assertSame(202, $this->client->getResponse()->getStatusCode());
+
+        $this->jsonRequest('PATCH', '/api/books/1', [
+            'title' => 'Updated Title',
+            'description' => 'Updated Description',
+            'authorIds' => [1],
+        ]);
+        $this->assertSame(202, $this->client->getResponse()->getStatusCode());
+
+        $this->jsonRequest('GET', '/api/books/1');
+        $data = json_decode($this->client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        $this->assertSame('Updated Title', $data['title']);
+        $this->assertSame('Updated Description', $data['description']);
+        $this->assertSame([1], $data['authorIds']);
+
+        $this->jsonRequest('GET', '/api/authors/1');
+        $authorData = json_decode($this->client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        $this->assertSame([1], $authorData['bookIds']);
+    }
+
+    public function testPatchEmptyTitleRejected(): void
+    {
+        $this->jsonRequest('POST', '/api/books', ['title' => 'Original']);
+        $this->assertSame(202, $this->client->getResponse()->getStatusCode());
+
+        $this->jsonRequest('PATCH', '/api/books/1', ['title' => '']);
+        $this->assertSame(400, $this->client->getResponse()->getStatusCode());
+
+        $this->jsonRequest('GET', '/api/books/1');
+        $data = json_decode($this->client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        $this->assertSame('Original', $data['title']);
+    }
+
+    public function testPatchWhitespaceTitleRejected(): void
+    {
+        $this->jsonRequest('POST', '/api/books', ['title' => 'Original']);
+        $this->assertSame(202, $this->client->getResponse()->getStatusCode());
+
+        $this->jsonRequest('PATCH', '/api/books/1', ['title' => '   ']);
+        $this->assertSame(400, $this->client->getResponse()->getStatusCode());
+
+        $this->jsonRequest('GET', '/api/books/1');
+        $data = json_decode($this->client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        $this->assertSame('Original', $data['title']);
+    }
 }
