@@ -4,9 +4,14 @@ REST API для управления книгами и авторами на Sym
 
 ## Требования
 
-- PHP 8.2+ с расширениями: `pdo_sqlite`, `intl`, `zip`
+### Без Docker
+
+- PHP 8.3+ с расширениями: `pdo_sqlite`, `intl`, `zip`, `xml`, `dom`
 - Composer 2
-- Docker (опционально)
+
+### Через Docker
+
+- Docker с Docker Compose
 
 ## Запуск
 
@@ -41,7 +46,7 @@ php -S localhost:8000 -t public/
 php bin/phpunit
 ```
 
-97 тестов, 229 проверок. База данных SQLite автоматически пересоздаётся перед каждым тестом.
+97 тестов, 229 проверок. Перед каждым тестом данные SQLite очищаются.
 
 ## API
 
