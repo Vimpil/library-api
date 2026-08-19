@@ -11,7 +11,8 @@
 
 ###> project ###
 /.idea/
-/.phpunit.result.cache
+config/reference.php
+**/.phpunit.result.cache
 ###< project ###
 
 ###> phpunit/phpunit ###
