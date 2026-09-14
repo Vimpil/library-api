@@ -1,21 +1,23 @@
 # Library API
 
-REST API для управления книгами и авторами на Symfony 7.4 с SQLite.
+REST API for managing books and authors built with Symfony 7.4 and SQLite.
 
-## Требования
+The project was implemented against a predefined API specification rather than as a generic CRUD application. It includes specification-specific validation rules, edge-case handling, DTO-based request/response separation, and command handling through Symfony Messenger.
 
-### Без Docker
+## Requirements
 
-- PHP 8.3+ с расширениями: `pdo_sqlite`, `intl`, `zip`, `xml`, `dom`
-- Composer 2
+### Without Docker
 
-### Через Docker
+* PHP 8.3+ with the following extensions: `pdo_sqlite`, `intl`, `zip`, `xml`, `dom`
+* Composer 2
 
-- Docker с Docker Compose
+### With Docker
 
-## Запуск
+* Docker with Docker Compose
 
-### Через Docker
+## Setup
+
+### With Docker
 
 ```bash
 docker compose build
@@ -24,15 +26,15 @@ docker exec library-api-php composer install
 docker exec library-api-php php bin/console doctrine:migrations:migrate --no-interaction
 ```
 
-API доступен на `http://localhost:8000`.
+The API is available at `http://localhost:8000`.
 
-Тесты:
+Run tests:
 
 ```bash
 docker exec library-api-php php bin/phpunit
 ```
 
-### Без Docker
+### Without Docker
 
 ```bash
 composer install
@@ -40,54 +42,71 @@ php bin/console doctrine:migrations:migrate --no-interaction
 php -S localhost:8000 -t public/
 ```
 
-## Тесты
+## Tests
 
 ```bash
 php bin/phpunit
 ```
 
-97 тестов, 229 проверок. Перед каждым тестом данные SQLite очищаются.
+97 tests, 229 assertions. The SQLite database is reset before each test.
+
+The test suite covers API behavior, validation rules, pagination, filtering, sorting, update semantics, relationships, error cases, and other edge cases defined by the specification.
 
 ## API
 
-| Метод | Путь | Описание |
-|-------|------|----------|
-| GET | `/api/authors` | Список авторов (фильтрация, пагинация, сортировка) |
-| POST | `/api/authors` | Создать автора |
-| GET | `/api/authors/{id}` | Получить автора |
-| PUT | `/api/authors/{id}` | Обновить автора (полная замена) |
-| PATCH | `/api/authors/{id}` | Частичное обновление автора |
-| DELETE | `/api/authors/{id}` | Удалить автора |
-| GET | `/api/books` | Список книг (фильтрация, пагинация, сортировка) |
-| POST | `/api/books` | Создать книгу |
-| GET | `/api/books/{id}` | Получить книгу |
-| PUT | `/api/books/{id}` | Обновить книгу (полная замена) |
-| PATCH | `/api/books/{id}` | Частичное обновление книги |
-| DELETE | `/api/books/{id}` | Удалить книгу |
+| Method | Endpoint            | Description                                          |
+| ------ | ------------------- | ---------------------------------------------------- |
+| GET    | `/api/authors`      | List authors with filtering, pagination, and sorting |
+| POST   | `/api/authors`      | Create an author                                     |
+| GET    | `/api/authors/{id}` | Get an author                                        |
+| PUT    | `/api/authors/{id}` | Replace an author                                    |
+| PATCH  | `/api/authors/{id}` | Partially update an author                           |
+| DELETE | `/api/authors/{id}` | Delete an author                                     |
+| GET    | `/api/books`        | List books with filtering, pagination, and sorting   |
+| POST   | `/api/books`        | Create a book                                        |
+| GET    | `/api/books/{id}`   | Get a book                                           |
+| PUT    | `/api/books/{id}`   | Replace a book                                       |
+| PATCH  | `/api/books/{id}`   | Partially update a book                              |
+| DELETE | `/api/books/{id}`   | Delete a book                                        |
 
-Запросы на создание/обновление/удаление возвращают HTTP 202. Обработка происходит через `Symfony Messenger` (sync транспорт).
+Create, update, and delete operations return HTTP 202. Write operations are handled through `Symfony Messenger` using the synchronous transport.
 
-## Архитектура
+## Architecture
 
-- **Сущности:** `Author`, `Book` — связь ManyToMany (у автора много книг, у книги много авторов)
-- **DTO:** отдельные объекты для запроса и ответа (`AuthorCreateRequest`, `BookPatchRequest`, `AuthorResponse` и т.д.)
-- **Messenger:** команды (`CreateAuthorCommand`, `UpdateBookCommand` и т.д.) и обработчики
-- **База данных:** SQLite, миграция в `migrations/`
-- **Валидация:** атрибуты Symfony в DTO
+* **Entities:** `Author`, `Book` — many-to-many relationship between authors and books
+* **DTOs:** separate request and response objects (`AuthorCreateRequest`, `BookPatchRequest`, `AuthorResponse`, etc.)
+* **Messenger:** commands (`CreateAuthorCommand`, `UpdateBookCommand`, etc.) and their handlers
+* **Database:** SQLite with migrations in `migrations/`
+* **Validation:** Symfony validation attributes on DTOs
+* **Tests:** API and domain behavior covered by PHPUnit
 
-## Примеры запросов
+## Implementation Notes
+
+This project follows a predefined API specification with several non-standard requirements and edge cases.
+
+* `PUT` and `PATCH` have distinct validation and update semantics.
+* Whitespace-only values are rejected where required by the specification.
+* List endpoints validate pagination, sorting, and filtering parameters.
+* Invalid and missing related entity IDs are handled explicitly.
+* Write operations are dispatched through Symfony Messenger as required by the specification.
+* The synchronous Messenger transport keeps command handling separated from the HTTP layer without introducing asynchronous infrastructure.
+* Validation and edge-case behavior are covered by the automated test suite.
+
+The goal was to implement the specified API contract precisely while keeping the application structure simple and testable.
+
+## Example Requests
 
 ```bash
-# Создать автора
+# Create an author
 curl -X POST http://localhost:8000/api/authors \
   -H "Content-Type: application/json" \
-  -d '{"name": "Толстой"}'
+  -d '{"name": "Leo Tolstoy"}'
 
-# Создать книгу с авторами
+# Create a book with authors
 curl -X POST http://localhost:8000/api/books \
   -H "Content-Type: application/json" \
-  -d '{"title": "Война и мир", "authorIds": [1]}'
+  -d '{"title": "War and Peace", "authorIds": [1]}'
 
-# Список книг с фильтрацией и пагинацией
-curl "http://localhost:8000/api/books?title=Война&page=1&pageSize=10&sort=title&order=asc"
+# List books with filtering and pagination
+curl "http://localhost:8000/api/books?title=War&page=1&pageSize=10&sort=title&order=asc"
 ```
