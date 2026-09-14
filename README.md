@@ -2,7 +2,7 @@
 
 REST API for managing books and authors built with Symfony 7.4 and SQLite.
 
-The project was implemented against a predefined API specification rather than as a generic CRUD application. It includes specification-specific validation rules, edge-case handling, DTO-based request/response separation, and command handling through Symfony Messenger.
+This project was implemented as a technical assignment with a predefined API and architecture requirements. In addition to standard CRUD operations, the specification required automatic request mapping in controllers and processing write operations through Symfony Messenger.
 
 ## Requirements
 
@@ -48,9 +48,9 @@ php -S localhost:8000 -t public/
 php bin/phpunit
 ```
 
-97 tests, 229 assertions. The SQLite database is reset before each test.
+97 tests, 229 assertions.
 
-The test suite covers API behavior, validation rules, pagination, filtering, sorting, update semantics, relationships, error cases, and other edge cases defined by the specification.
+The test suite covers API behavior, validation, pagination, filtering, sorting, relationships, update semantics, error handling, and edge cases.
 
 ## API
 
@@ -69,30 +69,71 @@ The test suite covers API behavior, validation rules, pagination, filtering, sor
 | PATCH  | `/api/books/{id}`   | Partially update a book                              |
 | DELETE | `/api/books/{id}`   | Delete a book                                        |
 
-Create, update, and delete operations return HTTP 202. Write operations are handled through `Symfony Messenger` using the synchronous transport.
+Create, update, and delete operations return HTTP 202 immediately. The corresponding operations are dispatched through `Symfony Messenger` and executed by their message handlers.
 
 ## Architecture
 
 * **Entities:** `Author`, `Book` — many-to-many relationship between authors and books
 * **DTOs:** separate request and response objects (`AuthorCreateRequest`, `BookPatchRequest`, `AuthorResponse`, etc.)
-* **Messenger:** commands (`CreateAuthorCommand`, `UpdateBookCommand`, etc.) and their handlers
-* **Database:** SQLite with migrations in `migrations/`
+* **Request mapping:** controllers use Symfony's automatic request mapping functionality to map incoming request data to typed request DTOs
+* **Messenger:** write operations are represented by commands (`CreateAuthorCommand`, `UpdateBookCommand`, etc.) and processed by dedicated handlers
+* **Transport:** synchronous Messenger transport, as permitted by the assignment
+* **Database:** SQLite with Doctrine migrations in `migrations/`
 * **Validation:** Symfony validation attributes on DTOs
-* **Tests:** API and domain behavior covered by PHPUnit
+* **Tests:** PHPUnit coverage for API behavior and edge cases
 
 ## Implementation Notes
 
-This project follows a predefined API specification with several non-standard requirements and edge cases.
+The implementation follows the assignment requirements while adding several improvements around validation, querying, and test coverage.
 
-* `PUT` and `PATCH` have distinct validation and update semantics.
-* Whitespace-only values are rejected where required by the specification.
-* List endpoints validate pagination, sorting, and filtering parameters.
-* Invalid and missing related entity IDs are handled explicitly.
-* Write operations are dispatched through Symfony Messenger as required by the specification.
-* The synchronous Messenger transport keeps command handling separated from the HTTP layer without introducing asynchronous infrastructure.
-* Validation and edge-case behavior are covered by the automated test suite.
+### Request handling
 
-The goal was to implement the specified API contract precisely while keeping the application structure simple and testable.
+Controllers use Symfony's automatic request mapping to convert incoming request data into dedicated request DTOs.
+
+This keeps HTTP request parsing and validation separate from the application logic and allows different contracts for create, full update, and partial update operations.
+
+### Messenger-based writes
+
+Create, update, and delete operations are dispatched as Messenger commands.
+
+For example:
+
+* `CreateAuthorCommand`
+* `UpdateAuthorCommand`
+* `DeleteAuthorCommand`
+* `CreateBookCommand`
+* `UpdateBookCommand`
+* `DeleteBookCommand`
+
+The API returns HTTP 202 before the command handler performs the actual operation.
+
+The synchronous transport is used for the assignment, so the Messenger-based architecture can be demonstrated without requiring a separate message broker or worker infrastructure.
+
+### Validation and edge cases
+
+The implementation goes beyond the basic CRUD requirements and includes:
+
+* distinct `PUT` and `PATCH` semantics
+* validation of PATCH fields when they are present
+* rejection of whitespace-only values where applicable
+* validation of pagination and sorting parameters
+* explicit handling of missing resources
+* explicit handling of invalid author relationships
+* edge-case coverage in the test suite
+
+### List API
+
+Collection endpoints support:
+
+* filtering
+* pagination
+* configurable page size
+* sorting
+* validation of list query parameters
+
+### Testing
+
+The project contains 97 tests with 229 assertions covering successful operations as well as validation failures, invalid parameters, missing resources, relationships, update semantics, and other edge cases.
 
 ## Example Requests
 
